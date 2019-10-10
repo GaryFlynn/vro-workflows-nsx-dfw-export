@@ -1,8 +1,8 @@
-# vRO Workflow - NSX DFW Rule Export
+# vRO Workflows - NSX DFW Rule Export
 
 Export the NSX DFW Rules for all layer 3 Distributed Firewall rules to a CSV and (optionally) email this to the user.
 
-Full details of the workflows can be found at [gazflynn.com](https://gazflynn.com/technology/vmware/extracting-nsx-dfw-rule-hit-counts/).
+Full details of the workflows can be found at [gazflynn.com](https://gazflynn.com/technology/vmware/export-nsx-dfw-rules-using-vro/).
 
 ### Change Log
 
@@ -11,4 +11,4 @@ Full details of the workflows can be found at [gazflynn.com](https://gazflynn.co
 
 ### Sample Output
 
-![Image of Sample Report](https://github.com/GaryFlynn/vro-workflows-nsx-dfw-rule-hit-count/raw/master/nsx-rule-hit-count-report-output.PNG)
+![Image of Sample Report](https://github.com/GaryFlynn/vro-workflows-nsx-dfw-export/raw/master/nsx-dfw-export.PNG)
