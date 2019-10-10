@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workflow xmlns="http://vmware.com/vco/workflow" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://vmware.com/vco/workflow http://vmware.com/vco/workflow/Workflow-v4.xsd" root-name="item2" object-name="workflow:name=generic" id="7f21ea22-6860-411b-9d10-bfc716b978db" version="0.0.69" api-version="6.0.0" allowed-operations="vef" restartMode="1" resumeFromFailedMode="0">
+  <display-name><![CDATA[NSX DFW Security Groups Export]]></display-name>
+  <position y="50.0" x="100.0"></position>
+  <input>
+    <param name="email_toAddress" type="Array/string"></param>
+    <param name="email" type="boolean"></param>
+  </input>
+  <attrib name="email_fromAddress" type="string" read-only="false">
+    <value encoded="n"><![CDATA[noreply@jltgroup.com]]></value>
+    <description><![CDATA[Enter the email fromAddress (ie. noreply@domain.com)]]></description>
+  </attrib>
+  <attrib name="email_fromName" type="string" read-only="false">
+    <value encoded="n"><![CDATA[No Reply]]></value>
+    <description><![CDATA[Enter the email fromName (ie. No Reply)]]></description>
+  </attrib>
+  <attrib name="email_smtpHost" type="string" read-only="false">
+    <value encoded="n"><![CDATA[intrelay01.uk.group.local]]></value>
+    <description><![CDATA[Enter the email smtpHost (ie. mail.domain.com)]]></description>
+  </attrib>
+  <attrib name="email_smtpPort" type="number" read-only="false">
+    <value encoded="n"><![CDATA[25.0]]></value>
+    <description><![CDATA[Enter the email smtpPort (ie. 25)]]></description>
+  </attrib>
+  <attrib name="email_subject" type="string" read-only="false">
+    <value encoded="n"><![CDATA[NSX DFW Security Groups Export]]></value>
+    <description><![CDATA[Enter the email subject (ie. NSX DFW Security Groups Export)]]></description>
+  </attrib>
+  <attrib name="email_message" type="string" read-only="false">
+    <value encoded="n"><![CDATA[Please find attached the 'NSX DFW Security Groups Export' report.]]></value>
+    <description><![CDATA[Enter the email message (ie. Please find attached the 'NSX DFW Security Groups Export' report.)]]></description>
+  </attrib>
+  <attrib name="fileLocation" type="string" read-only="false">
+    <value encoded="n"><![CDATA[]]></value>
+    <description><![CDATA[Leave blank.]]></description>
+  </attrib>
+  <workflow-item name="item1" out-name="item0" type="task">
+    <display-name><![CDATA[Scriptable task]]></display-name>
+    <script encoded="false"><![CDATA[fileLocation = System.getTempDirectory() + "/nsx_security_groups_export.csv";
+var csvFile = new FileWriter(fileLocation);
+csvFile.open();
+csvFile.clean();
+csvFile.writeLine("nsxManager,name,objectId,scope,IP Addresses");
+
+
+// Get all NSX REST Hosts defined (url or name should contain the string 'nsx'
+connections = Server.findAllForType("REST:RESTHost","nsx");
+
+// for each nsx manager / rest host, get the layer 3 sections and each ruleId
+for (i = 0; i < connections.length; i++) {
+	System.log("Working on " + connections[i].name + " (" + connections[i].url + ")");
+	
+	// GET GLOBAL SECURITY GROUPS AND IPs
+	
+	var IPs = [];
+	//create REST request with all the request details for Global Security Groups (REST Operation, query API)
+	var queryString = "2.0/services/securitygroup/scope/globalroot-0";
+	var commandRequest = connections[i].createRequest("GET", queryString);
+	//set headers for the request (Acppet = json or xml response)
+	commandRequest.setHeader("Accept", "application/json");
+	//trigger the API request
+	var commandResponse = commandRequest.execute();
+	//get status of the API request
+	var statusCode = commandResponse.statusCode; 
+	if(statusCode == 200) {
+		// value in the header will be of type "Object". Convert it into string type
+		var response = commandResponse.contentAsString;
+		global_jsonResponse = JSON.parse(response);
+	}
+	//Check if any other command is getting executed on the vm
+	else if(statusCode != 200) {	
+		var response = JSON.parse(commandResponse.contentAsString);
+		var errorResponse = response.error.message;
+		throw "Request for executing the command failed with Status Code: " + statusCode + " and error message as: "+errorResponse;
+	}
+	System.log("Global Security Groups Found: " + global_jsonResponse.length);
+	//get each layer 3 secion
+	for(j = 0; j < global_jsonResponse.length; j++) {
+		System.debug("Finding IPs in Security Group '" + global_jsonResponse[j].name + "' with ID '" + global_jsonResponse[j].objectId + "'");
+		//generate query string
+		var queryString = "2.0/services/securitygroup/" + global_jsonResponse[j].objectId + "/translation/ipaddresses";
+		
+		//create REST request with all the request details(REST Operation, query API, content to be posted)
+		var commandRequest = connections[i].createRequest("GET", queryString);
+		//set headers for the request (Acppet = json or xml response)
+		commandRequest.setHeader("Accept", "application/json");
+		//trigger the API request
+		var commandResponse = commandRequest.execute();
+		//get status of the API request
+		var statusCode = commandResponse.statusCode; 
+		if(statusCode == 200) {
+			// value in the header will be of type "Object". Convert it into string type
+			var response = commandResponse.contentAsString;
+			globalIPs_jsonResponse = JSON.parse(response);
+		}
+		//Check if any other command is getting executed on the vm
+		else if(statusCode != 200) {	
+			var response = JSON.parse(commandResponse.contentAsString);
+			throw "Request for executing the command failed with Status Code: " + statusCode + " and error message as: "+response;
+		}
+		
+		System.debug("IPs Found in Security Group '" + global_jsonResponse[j].name + "': " + globalIPs_jsonResponse.ipNodes.length);
+		for(k = 0; k < globalIPs_jsonResponse.ipNodes.length; k++) {
+			System.debug(globalIPs_jsonResponse.ipNodes[k].ipAddresses[0]);
+			IPs.push(globalIPs_jsonResponse.ipNodes[k].ipAddresses[0]);
+		}
+		
+		if (IPs.length == 0){
+			csvFile.writeLine(connections[i].name + "," + global_jsonResponse[j].name + "," + global_jsonResponse[j].objectId + ",global,No IPs Found in Security Group");
+			var IPs = [];
+		}
+		else {
+			csvFile.writeLine(connections[i].name + "," + global_jsonResponse[j].name + "," + global_jsonResponse[j].objectId + ',global,"' + IPs + '"');
+			var IPs = [];
+		}
+	}
+	
+	// GET UNIVERSAL SECURITY GROUPS AND IPs
+	
+	//create REST request with all the request details for Global Security Groups (REST Operation, query API)
+	var queryString = "2.0/services/securitygroup/scope/universalroot-0";
+	var commandRequest = connections[i].createRequest("GET", queryString);
+	//set headers for the request (Acppet = json or xml response)
+	commandRequest.setHeader("Accept", "application/json");
+	//trigger the API request
+	var commandResponse = commandRequest.execute();
+	//get status of the API request
+	var statusCode = commandResponse.statusCode; 
+	if(statusCode == 200) {
+		// value in the header will be of type "Object". Convert it into string type
+		var response = commandResponse.contentAsString;
+		universal_jsonResponse = JSON.parse(response);
+	}
+	//Check if any other command is getting executed on the vm
+	else if(statusCode != 200) {	
+		var response = JSON.parse(commandResponse.contentAsString);
+		var errorResponse = response.error.message;
+		throw "Request for executing the command failed with Status Code: " + statusCode + " and error message as: "+errorResponse;
+	}
+	System.log("Universal Security Groups Found: " + universal_jsonResponse.length);
+	//get each layer 3 secion
+	for(m = 0; m < universal_jsonResponse.length; m++) {
+		System.debug("Finding IPs in Security Group '" + universal_jsonResponse[m].name + "' with ID '" + universal_jsonResponse[m].objectId + "'");
+		//generate query string
+		var queryString = "2.0/services/securitygroup/" + universal_jsonResponse[m].objectId + "/translation/ipaddresses";
+		
+		//create REST request with all the request details(REST Operation, query API, content to be posted)
+		var commandRequest = connections[i].createRequest("GET", queryString);
+		//set headers for the request (Acppet = json or xml response)
+		commandRequest.setHeader("Accept", "application/json");
+		//trigger the API request
+		var commandResponse = commandRequest.execute();
+		//get status of the API request
+		var statusCode = commandResponse.statusCode; 
+		if(statusCode == 200) {
+			// value in the header will be of type "Object". Convert it into string type
+			var response = commandResponse.contentAsString;
+			universalIPs_jsonResponse = JSON.parse(response);
+		}
+		//Check if any other command is getting executed on the vm
+		else if(statusCode != 200) {	
+			var response = JSON.parse(commandResponse.contentAsString);
+			throw "Request for executing the command failed with Status Code: " + statusCode + " and error message as: "+response;
+		}
+		
+		System.debug("IPs Found in Security Group '" + universal_jsonResponse[m].name + "': " + universalIPs_jsonResponse.ipNodes.length);
+		for(n = 0; n < universalIPs_jsonResponse.ipNodes.length; n++) {
+			System.debug(universalIPs_jsonResponse.ipNodes[n].ipAddresses[0]);
+			IPs.push(universalIPs_jsonResponse.ipNodes[n].ipAddresses[0]);
+		}
+		if (IPs.length == 0){
+			csvFile.writeLine(connections[i].name + "," + universal_jsonResponse[m].name + "," + universal_jsonResponse[m].objectId + ",global,No IPs Found in Security Group");
+			var IPs = [];
+		}
+		else {
+			csvFile.writeLine(connections[i].name + "," + universal_jsonResponse[m].name + "," + universal_jsonResponse[m].objectId + ',universal,"' + IPs + '"');
+			var IPs = [];
+		}
+	}
+}
+// close the csv file
+csvFile.close();]]></script>
+    <in-binding>
+      <bind name="email_toAddress" type="Array/string" export-name="email_toAddress"></bind>
+      <bind name="email_fromAddress" type="string" export-name="email_fromAddress"></bind>
+      <bind name="email_fromName" type="string" export-name="email_fromName"></bind>
+      <bind name="email_smtpHost" type="string" export-name="email_smtpHost"></bind>
+      <bind name="email_smtpPort" type="number" export-name="email_smtpPort"></bind>
+      <bind name="email_subject" type="string" export-name="email_subject"></bind>
+      <bind name="email_message" type="string" export-name="email_message"></bind>
+    </in-binding>
+    <out-binding>
+      <bind name="fileLocation" type="string" export-name="fileLocation"></bind>
+    </out-binding>
+    <position y="55.40909090909091" x="344.5"></position>
+  </workflow-item>
+  <workflow-item name="item2" out-name="item1" type="task">
+    <display-name><![CDATA[Validate inputs]]></display-name>
+    <script encoded="false"><![CDATA[if (email == true){
+	if(email_toAddress == null || email_fromAddress == null || email_fromName == null || email_smtpHost == null || email_smtpPort == null || email_subject == null || email_message == null) {
+		throw "Enter all of the required email_xxxxxx fields to proceed.";
+	}
+}]]></script>
+    <in-binding>
+      <bind name="email_toAddress" type="Array/string" export-name="email_toAddress"></bind>
+      <bind name="email_fromAddress" type="string" export-name="email_fromAddress"></bind>
+      <bind name="email_fromName" type="string" export-name="email_fromName"></bind>
+      <bind name="email_smtpHost" type="string" export-name="email_smtpHost"></bind>
+      <bind name="email_smtpPort" type="number" export-name="email_smtpPort"></bind>
+      <bind name="email_subject" type="string" export-name="email_subject"></bind>
+      <bind name="email_message" type="string" export-name="email_message"></bind>
+      <bind name="email" type="boolean" export-name="email"></bind>
+    </in-binding>
+    <out-binding></out-binding>
+    <position y="55.40909090909091" x="204.5"></position>
+  </workflow-item>
+  <workflow-item name="item4" type="end" end-mode="0">
+    <position y="45.40909090909091" x="804.5"></position>
+  </workflow-item>
+  <workflow-item name="item5" out-name="item4" type="task">
+    <display-name><![CDATA[Email CSV]]></display-name>
+    <script encoded="false"><![CDATA[// create email attachment of csv file
+var objMimeAttachment;
+objMimeAttachment = new MimeAttachment(fileLocation);
+
+// create email message based on workflow attributes
+var objEmailMessage;
+objEmailMessage = new EmailMessage();
+objEmailMessage.fromAddress = email_fromAddress;
+objEmailMessage.fromName = email_fromName;
+objEmailMessage.smtpHost = email_smtpHost;
+objEmailMessage.smtpPort = email_smtpPort;
+objEmailMessage.subject = email_subject;
+objEmailMessage.toAddress = email_toAddress.toString();
+objEmailMessage.addMimePart(email_message, "text/html");
+objEmailMessage.addMimePart(objMimeAttachment, "text/csv");
+System.log("Sending mail to host: " + objEmailMessage.smtpHost + ":" + objEmailMessage.smtpPort + " with user: " + objEmailMessage.username 
+			+ ", from: " + objEmailMessage.fromAddress + ", to: " + objEmailMessage.toAddress );
+objEmailMessage.sendMessage();]]></script>
+    <in-binding>
+      <bind name="fileLocation" type="string" export-name="fileLocation"></bind>
+      <bind name="email_toAddress" type="Array/string" export-name="email_toAddress"></bind>
+      <bind name="email_fromAddress" type="string" export-name="email_fromAddress"></bind>
+      <bind name="email_fromName" type="string" export-name="email_fromName"></bind>
+      <bind name="email_smtpHost" type="string" export-name="email_smtpHost"></bind>
+      <bind name="email_smtpPort" type="number" export-name="email_smtpPort"></bind>
+      <bind name="email_subject" type="string" export-name="email_subject"></bind>
+      <bind name="email_message" type="string" export-name="email_message"></bind>
+    </in-binding>
+    <out-binding></out-binding>
+    <position y="55.40909090909091" x="624.5"></position>
+  </workflow-item>
+  <workflow-item name="item0" out-name="item5" type="custom-condition" alt-out-name="item3">
+    <display-name><![CDATA[Email CSV?]]></display-name>
+    <script encoded="false"><![CDATA[if(email == true){
+	return true;
+}
+else if(email == false){
+	System.log("The CSV is available from the vRO Server (" + fileLocation + ").");
+	return false;
+}]]></script>
+    <in-binding>
+      <bind name="email" type="boolean" export-name="email"></bind>
+      <bind name="fileLocation" type="string" export-name="fileLocation"></bind>
+    </in-binding>
+    <position y="45.40909090909091" x="485.0"></position>
+  </workflow-item>
+  <workflow-item name="item3" type="end" end-mode="0">
+    <position y="109.04545454545453" x="525.0"></position>
+  </workflow-item>
+  <presentation>
+    <p-param name="email">
+      <desc><![CDATA[Email the 'NSX DFW Security Groups Export' Report?
+
+If No, the CSV will be available from the vRO Temp folder.
+/var/lib/vco/app-server/temp/nsx_security_groups_export.csv]]></desc>
+      <p-qual kind="static" name="defaultValue" type="boolean"><![CDATA[false]]></p-qual>
+    </p-param>
+    <p-param name="email_toAddress">
+      <desc><![CDATA[Enter email addresses to receive the report]]></desc>
+      <p-qual kind="static" name="mandatory" type="boolean"><![CDATA[false]]></p-qual>
+      <p-qual kind="ognl" name="visible" type="boolean"><![CDATA[#email==true]]></p-qual>
+    </p-param>
+  </presentation>
+</workflow>
