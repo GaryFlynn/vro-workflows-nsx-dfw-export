@@ -9,6 +9,6 @@ Full details of the workflows can be found at [gazflynn.com](https://gazflynn.co
 ***Updated 9th October, 2019***
 - Original release
 
-### Sample Output
+### Sample Output of DFW Hit Count Report
 
 ![Image of Sample DFW Hit Count Report](https://github.com/GaryFlynn/vro-workflows-nsx-dfw-export/raw/master/nsx-rule-hit-count-report-output.PNG)
