@@ -1,4 +1,4 @@
-# vRO Workflow - NSX DFW Rule Export
+# vRO Workflows - NSX DFW Rule Export
 
 Export the NSX DFW Rules for all layer 3 Distributed Firewall rules to a CSV and (optionally) email this to the user.
 
