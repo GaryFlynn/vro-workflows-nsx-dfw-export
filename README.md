@@ -8,6 +8,9 @@ Full details of the workflows can be found at [gazflynn.com](https://gazflynn.co
 
 ***Updated 10th October, 2019***
 - Initial release
+  - NSX DFW Rule Export
+  - NSX DFW Rule Hit Count
+  - NSX DFW Security Groups Export
 
 ### Sample Output of DFW Hit Count Report
 
