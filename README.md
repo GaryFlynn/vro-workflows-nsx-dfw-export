@@ -11,4 +11,4 @@ Full details of the workflows can be found at [gazflynn.com](https://gazflynn.co
 
 ### Sample Output
 
-![Image of Sample Report](https://github.com/GaryFlynn/vro-workflows-nsx-dfw-export/raw/master/nsx-dfw-export.PNG)
+![Image of Sample DFW Hit Count Report](https://github.com/GaryFlynn/vro-workflows-nsx-dfw-export/raw/master/nsx-rule-hit-count-report-output.PNG)
