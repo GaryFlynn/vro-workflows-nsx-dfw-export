@@ -6,8 +6,8 @@ Full details of the workflows can be found at [gazflynn.com](https://gazflynn.co
 
 ### Change Log
 
-***Updated 9th October, 2019***
-- Original release
+***Updated 10th October, 2019***
+- Initial release
 
 ### Sample Output of DFW Hit Count Report
 
