@@ -2,7 +2,7 @@
 
 Export the NSX DFW Rules for all layer 3 Distributed Firewall rules to a CSV and (optionally) email this to the user.
 
-Full details of the workflows can be found at [gazflynn.com](https://gazflynn.com/technology/vmware/export-nsx-dfw-rules-using-vro/).
+Full details of the workflows and installation instructions can be found at [gazflynn.com](https://gazflynn.com/technology/vmware/export-nsx-dfw-rules-using-vro/).
 
 ### Change Log
 
